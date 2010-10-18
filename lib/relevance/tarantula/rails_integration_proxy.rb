@@ -14,9 +14,12 @@ class Relevance::Tarantula::RailsIntegrationProxy
     t.handlers << InvalidHtmlHandler.new
     t.log_grabber = Relevance::Tarantula::LogGrabber.new(File.join(rails_root, "log/test.log"))
     t.skip_uri_patterns << /logout$/
+    t.skip_uri_patterns.delete /^http/
+    t.skip_uri_patterns.push /^https?:\/\/(?!#{integration_test.host})/
+
     t.transform_url_patterns += [
       [/\?\d+$/, ''],                               # strip trailing numbers for assets
-      [/^http:\/\/#{integration_test.host}/, '']    # strip full path down to relative
+      [/^https?:\/\/#{integration_test.host}/, '']  # strip full path down to relative
     ]
     t.test_name = t.proxy.integration_test.method_name
     t.reporters << Relevance::Tarantula::HtmlReporter.new(t.report_dir)
@@ -31,14 +34,27 @@ class Relevance::Tarantula::RailsIntegrationProxy
   [:get, :post, :put, :delete].each do |verb|
     define_method(verb) do |url, *args|
       integration_test.send(verb, url, *args)
-      response = integration_test.response
-      patch_response(url, response)
-      response
+      process integration_test.response, verb, url, *args
     end
   end
 
-  def patch_response(url, response)
-    if response.code == '404'
+  def xhr(verb, url, *args)
+    integration_test.send(:xhr, verb, url, *args)
+    process integration_test.response, verb, url, *args
+  end
+
+  def process(response, verb, url, *args)
+    if verb == :get && response.code == '302'
+      location = response.headers['Location']
+
+      if location =~ /#{url}$/ # Schema change
+        integration_test.https!(!!(location =~ /^https/))
+        response = send(verb, url, *args)
+      elsif location =~ /#!?/  # AJAX load
+        response = send(:xhr, verb, url, *args)
+      end
+
+    elsif response.code == '404'
       if File.exist?(static_content_path(url))
         case ext = File.extension(url)
         when /html|te?xt|css|js|jpe?g|gif|psd|png|eps|pdf|ico/
@@ -51,11 +67,14 @@ class Relevance::Tarantula::RailsIntegrationProxy
         end
       end
     end
+
     # don't count on metaclass taking block, e.g.
     # http://relevancellc.com/2008/2/12/how-should-metaclass-work
     response.metaclass.class_eval do
       include Relevance::CoreExtensions::Response
     end
+
+    return response
   end
   
   def static_content_file(url)

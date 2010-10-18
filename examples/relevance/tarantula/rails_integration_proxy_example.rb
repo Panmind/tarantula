@@ -59,7 +59,7 @@ describe "Relevance::Tarantula::RailsIntegrationProxy patching" do
     @rip.stubs(:rails_root).returns("faux_rails_root")
     @response = stub_everything({:code => "404", :headers => {}, :content_type => "text/html"})
     @response.meta.ancestors.should_not include(Relevance::CoreExtensions::Response)
-    @rip.patch_response("/url", @response)
+    @rip.process(@response, :get, "/url")
     @response.meta.ancestors.should include(Relevance::CoreExtensions::Response)
     @response.html?.should == true
   end
@@ -67,14 +67,27 @@ describe "Relevance::Tarantula::RailsIntegrationProxy patching" do
   it "replaces 404s with 200s, pulling content from public, for known text types" do
     File.expects(:extension).returns("html")
     @rip.expects(:static_content_file).with("/url").returns("File body")
-    @rip.patch_response("/url", @response)
+    @rip.process(@response, :get, "/url")
     @response.headers.should == {"type" => "text/html"}
+  end
+
+  it "handles SSL requirements" do
+    @response = stub_everything({:code => "302", :headers => {'Location' => 'https://url'}})
+    @rip.integration_test.expects(:https!).with(true)
+    @rip.expects(:get).with("/url")
+    @rip.process(@response, :get, "/url")
+  end
+
+  it "handles AJAX nav requirements" do
+    @response = stub_everything({:code => "302", :headers => {'Location' => 'http://url#fragment'}})
+    @rip.expects(:xhr).with(:get, "/url/fragment")
+    @rip.process(@response, :get, "/url/fragment")
   end
   
   it "logs and skips types we haven't dealt with yet" do
     File.expects(:extension).returns("whizzy")
     @rip.expects(:log).with("Skipping unknown type /url")
-    @rip.patch_response("/url", @response)
+    @rip.process(@response, :get, "/url")
   end
   
   it "can find static content relative to rails root" do
