@@ -1,5 +1,15 @@
 = Tarantula
 
+== Purpose of this fork
+
+ * Add panmind/ssl_helper interaction support - if the crawler receives
+   a `302` response redirecting to the very same requested URL, assume
+   it is a SSL requirement and use `https!` to set the SSL request hdrs;
+
+ * Add panmind/jquery-ajax-nav support - if the crawler receives a `302`
+   response with a `#` or `#!` in it, assume it is an XHR requirement
+   thus use `xhr` to re-send the request.
+
 == DESCRIPTION
 
 Tarantula is a big fuzzy spider. It crawls your Rails application, fuzzing data to see what breaks.
