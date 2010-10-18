@@ -10,10 +10,10 @@ begin
   files << Dir["examples/**/*", "laf/**/*", "lib/**/*", "tasks/**/*", "template/**/*"]
   
   Jeweler::Tasks.new do |s|
-    s.name = "tarantula"
+    s.name = "panmind-tarantula"
     s.summary = "A big hairy fuzzy spider that crawls your site, wreaking havoc"
     s.description = "A big hairy fuzzy spider that crawls your site, wreaking havoc"
-    s.homepage = "http://github.com/relevance/tarantula"
+    s.homepage = "http://github.com/Panmind/tarantula"
     s.email = "opensource@thinkrelevance.com"
     s.authors = ["Relevance, Inc."]
     s.require_paths = ["lib"]
@@ -77,7 +77,7 @@ require 'rake/rdoctask'
 Rake::RDocTask.new do |rdoc|
   version = File.exist?('VERSION') ? File.read('VERSION') : ''
   rdoc.rdoc_dir = 'rdoc'
-  rdoc.title = "tarantula #{version}"
+  rdoc.title = "panmind-tarantula #{version}"
   rdoc.rdoc_files.include('README*')
   rdoc.rdoc_files.include('lib/**/*.rb')
 end
